@@ -110,6 +110,8 @@ end)
 game.ReplicatedStorage.WorldSmokeResult:FireServer(if ok then result else "FAIL: "..tostring(result))
 ]=]
 driver.Parent=game.StarterPlayer.StarterPlayerScripts
+-- Allow the CLI place-idle transition to finish before starting a second DataModel.
+task.wait(2)
 local outcome=game:GetService("StudioTestService"):ExecutePlayModeAsync("WorldSurvey")
 print(outcome)
 assert(type(outcome)=="string" and outcome:sub(1,4)=="PASS",tostring(outcome))
