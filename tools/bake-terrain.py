@@ -4,6 +4,7 @@ import base64
 from pathlib import Path
 import subprocess
 import tempfile
+import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORT = """
@@ -23,7 +24,12 @@ def module(name, binding):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--studio", required=True, type=Path)
-    studio = parser.parse_args().studio.resolve()
+    parser.add_argument("--lune", default="lune")
+    args = parser.parse_args()
+    studio = args.studio.resolve()
+    lune = shutil.which(args.lune)
+    if not lune:
+        parser.error("Lune 0.11.1 is required to pack the native voxel model")
     with tempfile.TemporaryDirectory() as folder:
         temp = Path(folder)
         script, log = temp / "bake.luau", temp / "studio.log"
@@ -34,11 +40,15 @@ def main():
         data = base64.b64decode("".join(line[13:] for line in lines if line.startswith("TERRAIN_DATA ")), validate=True)
         if not data.startswith(b"<roblox!") or f"TERRAIN_BYTES {len(data)}" not in lines:
             raise RuntimeError("Incomplete terrain export: " + "\n".join(lines[-3:])[:400])
-    output = ROOT / "world/LunarTerrain.rbxm"
-    with tempfile.NamedTemporaryFile(dir=output.parent, delete=False) as result:
-        result.write(data)
-    Path(result.name).replace(output)
-    print(f"Baked {output.name} ({len(data)} bytes)")
+        raw, packed = temp / "studio.rbxm", temp / "lunar.rbxm"
+        raw.write_bytes(data)
+        subprocess.run([lune, "run", str(ROOT / "tools/world/pack-terrain.luau"),
+                        str(raw), str(packed)], check=True)
+        output = ROOT / "world/LunarTerrain.rbxm"
+        with tempfile.NamedTemporaryFile(dir=output.parent, delete=False) as result:
+            result.write(packed.read_bytes())
+        Path(result.name).replace(output)
+    print(f"Baked {output.name} ({output.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":

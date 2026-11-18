@@ -9,7 +9,7 @@ local function group(name)
 	folder.Name, folder.Parent = name, world
 	return folder
 end
-local roof, city, sky = group("TelescopeDeck"), group("City"), group("Constellations")
+local roof = group("TelescopeDeck")
 local function part(parent, name, size, frame, color, material, shape)
 	local p = r.Instance.new("Part")
 	p.Name, p.Size, p.CFrame = name, size, frame
@@ -45,7 +45,7 @@ for i=0,39 do
 	local x,z = math.sin(angle), math.cos(angle)
 	part(roof, "Compass mark", V(0.10,0.08,if i%5==0 then 1.8 else 0.8),
 		C.new(x*9,1.49,z*9)*C.Angles(0,angle,0), "CDB487", "Metal")
-	if i%2==0 and i~=0 and i~=38 then
+	if i%2==0 and i~=0 and i~=38 and i~=8 and i~=10 and i~=28 and i~=30 then
 		local a, b = V(x*32,4,z*32), V(math.sin(angle+math.pi/10)*32,4,math.cos(angle+math.pi/10)*32)
 		part(roof,"Railing post",V(0.38,3.4,0.38),C.new(x*32,3.1,z*32),"515B76","Metal")
 		rod(roof,"Top rail",a,b,0.18,"D8B585","Metal")
@@ -102,39 +102,5 @@ for _,path in ipairs({{-20,5,"87D6C9"},{20,5,"F6AD78"},{16,-17,"A7ACFF"},{0,32,"
 	end
 end
 
--- Sunset-lit windows and roof silhouettes are fixed across clients.
-math.randomseed(12937)
-for row=1,2 do
-	for i=-8,8 do
-		local x, z = i*11 + math.random(-3,3), -27-row*23-math.random(0,13)
-		local w,d,top = math.random(6,12), math.random(7,13), math.random(0,13)
-		local tone = if row==1 then "35405C" else "28334F"
-		part(city,"Townhouse",V(w,40,d),C.new(x,top-20,z),tone,"Slate")
-		part(city,"Cornice",V(w+0.5,0.45,d+0.4),C.new(x,top,z),"535F79","Metal")
-		part(city,"Chimney",V(1.2,2.7,1.4),C.new(x+w*0.28,top+1.3,z),tone)
-		for floor=1,4 do
-			for col=-1,1 do
-				if math.random()<0.65 then
-					part(city,"Window",V(0.9,1.25,0.12),C.new(x+col*w/3.5,top-floor*2.8,z+d/2),
-						if math.random()<0.75 then "EDBC84" else "97B7C9","Neon")
-				end
-			end
-		end
-	end
-end
-for i=1,155 do
-	local x,y,z = math.random(-200,200),math.random(9,115),math.random(-155,-110)
-	local s = math.random(12,34)/100
-	part(sky,"Star",V(s,s,s),C.new(x,y,z),if i%4==0 then "FBD6A1" else "BECEE9","Neon","Ball")
-end
-local previousStar
-for _,point in ipairs({{-52,30},{-46,34},{-40,29},{-35,37},{-27,36}}) do
-	local pos=V(point[1],point[2],-73)
-	part(sky, "Guide star",V(0.5,0.5,0.5),C.new(pos),"FFE4BC","Neon","Ball")
-	if previousStar then
-		rod(sky,"Star chart line",previousStar,pos,0.09,"788DA8","SmoothPlastic")
-	end
-	previousStar=pos
-end
 if not fs.isDir("world") then fs.writeDir("world") end
 fs.writeFile("world/Observatory.rbxmx",r.serializeModel({world},true))

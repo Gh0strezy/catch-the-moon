@@ -4,16 +4,23 @@
     "$className": "DataModel",
     "Workspace": {
       "$properties": { "StreamingEnabled": false },
-      "Observatory": { "$path": "world/Observatory.rbxmx" }
+      "Observatory": { "$path": "world/Observatory.rbxmx" },
+      "Terrain": { "$path": "world/LunarTerrain.rbxm" },
+      "Camera": { "$className": "Camera", "$properties": { "CFrame": [58,35,55,0.7592566,-0.201372,0.6188527,0,0.9509234,0.3094264,-0.6507914,-0.234934,0.7219949], "Focus": [-2,5,-15,1,0,0,0,1,0,0,0,1] } },
+      "World": { "$path": "world/Meridian.rbxmx" }
     },
     "Lighting": {
       "$properties": {
-        "ClockTime": 0.7, "Brightness": 1.8,
-        "Ambient": [0.28, 0.30, 0.46], "OutdoorAmbient": [0.32, 0.36, 0.53],
-        "FogColor": [0.10, 0.13, 0.25], "FogStart": 105, "FogEnd": 360
+        "ClockTime": 3.85, "Brightness": 2.1, "GeographicLatitude": 28,
+        "GlobalShadows": true, "ShadowSoftness": 0.28,
+        "Ambient": [0.36, 0.36, 0.44], "OutdoorAmbient": [0.49, 0.50, 0.59],
+        "EnvironmentDiffuseScale": 0.38, "EnvironmentSpecularScale": 0.55,
+        "ExposureCompensation": 0.12
       },
-      "NightSky": { "$className": "Sky", "$properties": { "CelestialBodiesShown": false, "StarCount": 0 } },
-      "MoonGlow": { "$className": "BloomEffect", "$properties": { "Intensity": 0.26, "Size": 25, "Threshold": 1.1 } }
+      "NightSky": { "$className": "Sky", "$properties": { "CelestialBodiesShown": true, "StarCount": 1800, "MoonAngularSize": 0, "SunAngularSize": 0 } },
+      "LimbHaze": { "$className": "Atmosphere", "$properties": { "Density": 0.15, "Offset": 0.12, "Haze": 0.55, "Glare": 0, "Color": [0.68, 0.69, 0.80], "Decay": [0.36, 0.33, 0.44] } },
+      "MoonGlow": { "$className": "BloomEffect", "$properties": { "Intensity": 0.12, "Size": 17, "Threshold": 1.35 } },
+      "SilverPrint": { "$className": "ColorCorrectionEffect", "$properties": { "Contrast": 0.045, "Saturation": -0.055, "TintColor": [1, 0.985, 0.97] } }
     },
     "ReplicatedStorage": { "MoonCatalog": { "$path": "src/shared/MoonCatalog.luau" } },
     "ServerScriptService": { "LunarStation": { "$path": "src/server" } },

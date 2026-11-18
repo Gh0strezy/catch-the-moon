@@ -63,7 +63,7 @@ return function(terrain, zones)
 			if outside<0 then mat=Enum.Material.Ground end
 		end
 		if math.abs(x)<26 and z>24 then y=math.min(y,-6) end
-		y-=smooth(0.97,1.11,edge)*63
+		y-=smooth(0.97,1.16,edge)*115
 		return y,mat
 	end
 	-- Four-stud native voxels, written in 64-stud strips to bound peak memory.
