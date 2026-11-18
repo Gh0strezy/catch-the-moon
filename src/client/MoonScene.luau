@@ -39,12 +39,6 @@ function MoonScene.new()
 	end
 	self:show()
 	RunService:BindToRenderStep("LunarObservatoryView", Enum.RenderPriority.Camera.Value+1, function(dt)
-		local cam = workspace.CurrentCamera
-		if not cam then return end
-		cam.CameraType = Enum.CameraType.Scriptable
-		cam.FieldOfView = 48
-		cam.CFrame = CFrame.lookAt(Vector3.new(0, 13.5, 36), Vector3.new(0, 12.8, 0))
-		cam.Focus = CFrame.new(center)
 		self.time += dt
 		self.elapsed += dt
 		self.pulse = math.max(0, self.pulse-dt*3.5)
@@ -58,10 +52,10 @@ end
 
 function MoonScene:progress(packet)
 	for i, beam in ipairs(self.beams) do
-		beam.Enabled = packet.hits > 0 and not packet.paused and (i == 1 or packet.crew > 1)
-		beam.CurveSize0 = 3.5 * (1 - packet.hits/packet.goal)
+		beam.Enabled = packet ~= nil
+		if packet then beam.CurveSize0 = (4-i) * (1-packet.hits/packet.goal) end
 	end
-	if packet.hits > 0 then self.pulse = 1 end
+	if packet and packet.hits>0 then self.pulse=1 end
 end
 
 function MoonScene:show(moon, index)
@@ -121,16 +115,6 @@ function MoonScene:show(moon, index)
 	model:PivotTo(CFrame.new(center))
 	model.Parent = workspace
 	self.model = model
-end
-
-function MoonScene:hitTest(point)
-	local cam = workspace.CurrentCamera
-	if not cam then return false end
-	local ray = cam:ViewportPointToRay(point.X, point.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { self.model }
-	return workspace:Raycast(ray.Origin, ray.Direction * 150, params) ~= nil
 end
 
 return MoonScene

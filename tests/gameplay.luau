@@ -1,50 +1,51 @@
-local catalog = require("../src/shared/MoonCatalog")
-local Round = require("../src/server/Round")
-
-local previous
-for level = 0, catalog.MaxLevel do
-	local odds = catalog.chances(level)
-	local cumulative = 0
-	for index, chance in ipairs(odds) do
-		assert(chance > 0)
-		if level == 0 then assert(math.abs(chance*100 - catalog.Moons[index].weight) < 1e-9) end
-		assert(catalog.roll(level, cumulative + chance/2) == index)
-		cumulative += chance
-	end
-	assert(math.abs(cumulative-1) < 1e-12)
-	local tail, oldTail = 0, 0
-	if previous then
-		for i = #odds, 2, -1 do
-			tail += odds[i]
-			oldTail += previous[i]
-			assert(tail > oldTail, "Each rarity threshold must improve with luck")
-		end
-	end
-	previous = odds
+local C=require("../src/shared/MoonCatalog")
+local Round=require("../src/server/Round")
+local old=C.newProfile({dust=80,level=4,counts={chalk=1,tidal=2}})
+assert(old.cash==80 and old.level==4 and old.counts.tidal==2 and old.strength==0)
+assert(C.place(old,1,"chalk") and C.inBag(old,"chalk")==0 and C.income(old)==1)
+assert(not C.place(old,2,"chalk") and not C.place(old,4,"tidal") and not C.place(old,1,"missing"))
+assert(C.place(old,1,"tidal") and C.inBag(old,"chalk")==1)
+assert(C.place(old,2,"tidal") and C.income(old)==6 and C.inBag(old,"tidal")==0)
+local copy=C.newProfile(old)
+assert(C.place(copy,1,"") and C.income(copy)==3 and C.income(old)==6)
+assert(C.newProfile({slots={"corona","corona","corona"},counts={corona=1}}).slots[2]=="")
+local d=C.newProfile()
+assert(not C.buy(d,"level"))
+C.award(d,1)
+assert(d.cash==8 and d.counts.chalk==1)
+d.cash=44
+assert(C.buy(d,"level") and C.buy(d,"speed") and d.cash==0)
+assert(C.walkSpeed(d.speed)==18 and C.luck(d.level)==1.25)
+for _=1,3 do assert(C.train(d)) end
+assert(d.strength==1 and d.reps==0 and C.window(1)>C.window(0))
+for _,stat in ipairs({"speed","level"}) do
+	d.cash=1e9
+	while C.buy(d,stat) do end
+	assert(d[stat]==(if stat=="speed" then C.SpeedCap else C.MaxLevel))
 end
-
-local a, b = catalog.newProfile(), catalog.newProfile()
-assert(not catalog.upgrade(a) and a.level == 0 and a.dust == 0)
-for _=1,3 do catalog.award(a,1) end
-assert(a.counts.chalk == 3 and b.counts.chalk == nil)
-assert(catalog.upgrade(a) and a.level == 1 and a.dust == 0)
-a.dust = 100000
-while a.level < catalog.MaxLevel do assert(catalog.upgrade(a)) end
-local before = a.dust
-assert(not catalog.upgrade(a) and a.dust == before)
-
-local round = Round.new(catalog.Taps)
-assert(not round:tap("one",0,0))
-assert(round:tap("one",1,0))
-assert(not round:tap("one",1,0.025))
-assert(round:tap("two",1,0.03))
-assert(round:packet().crew == 2)
-for i=3,catalog.Taps do assert(round:tap("one",1,i)) end
-assert(round.paused and not round:tap("two",1,60))
-round:remove("two")
-assert(round:packet().crew == 1)
-round:restart()
-assert(not round.paused and round.id == 2 and round.hits == 0 and round:packet().crew == 0)
-assert(not round:tap("one",1,80))
-assert(round:tap("one",2,80))
-print("PASS: odds, upgrades, inventory, shared catch, input cooldown and round rollover")
+local previous
+for level=0,C.MaxLevel do
+	local odds=C.chances(level)
+	local sum,tail,prevTail=0,0,0
+	for i,chance in ipairs(odds) do
+		assert(C.roll(level,sum+chance/2)==i)
+		sum+=chance
+		if i>1 then assert(C.Moons[i].hits>C.Moons[i-1].hits) end
+	end
+	assert(math.abs(sum-1)<1e-10)
+	for i=#odds,2,-1 do
+		tail+=odds[i]
+		if previous then prevTail+=previous[i]; assert(tail>prevTail) end
+	end
+	previous=odds
+end
+local random={NextNumber=function() return 0.5 end}
+local round=Round.new(1,1,C.Moons[1],C.window(0),random,100)
+assert(round:judge(1,100,100,0.2)==nil)
+local miss=round.start+0.1
+assert(round:judge(1,miss,miss,0.2)==false and round.mistakes==1)
+assert(round:judge(1,miss,miss,0.2)==nil)
+local ideal=round.start+round.period*0.5
+assert(round:judge(2,ideal,ideal+1,0.2)==nil)
+assert(round:judge(2,ideal,ideal+0.05,0.2)==true and round.hits==1 and round.ownHit)
+print("PASS: migration, inventory ownership, rentals, economy, strength, rarity and timing")

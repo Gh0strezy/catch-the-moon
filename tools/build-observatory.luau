@@ -45,7 +45,7 @@ for i=0,39 do
 	local x,z = math.sin(angle), math.cos(angle)
 	part(roof, "Compass mark", V(0.10,0.08,if i%5==0 then 1.8 else 0.8),
 		C.new(x*9,1.49,z*9)*C.Angles(0,angle,0), "CDB487", "Metal")
-	if i%2==0 then
+	if i%2==0 and i~=0 and i~=38 then
 		local a, b = V(x*32,4,z*32), V(math.sin(angle+math.pi/10)*32,4,math.cos(angle+math.pi/10)*32)
 		part(roof,"Railing post",V(0.38,3.4,0.38),C.new(x*32,3.1,z*32),"515B76","Metal")
 		rod(roof,"Top rail",a,b,0.18,"D8B585","Metal")
@@ -54,7 +54,53 @@ end
 local spawn = r.Instance.new("SpawnLocation")
 spawn.Name, spawn.Anchored, spawn.Neutral, spawn.Transparency = "Arrival", true, true, 1
 spawn.CanCollide, spawn.Duration, spawn.Size = false, 0, V(14,0.3,5)
-spawn.CFrame, spawn.Parent = C.new(0,1.8,9)*C.Angles(0,math.pi,0), roof
+spawn.CFrame, spawn.Parent = C.new(0,1.8,15), roof
+
+-- Four different silhouettes make the stations recognizable from the entry deck.
+local sites = group("Stations")
+local function station(key, x, z, accent)
+	local base = part(sites,key,V(0.58,7,7),C.new(x,1.74,z)*C.Angles(0,0,math.pi/2),"26344C","Metal","Cylinder")
+	base.CanCollide=true
+	part(sites,key.."Trim",V(0.12,6.5,6.5),C.new(x,2.08,z)*C.Angles(0,0,math.pi/2),accent,"Neon","Cylinder")
+end
+station("Catch",0,-6,"EAC787")
+station("Luck",-21,5,"87D6C9")
+station("Speed",21,5,"F6AD78")
+station("Gym",16,-17,"A7ACFF")
+-- Brass telescope on a tripod, a mechanical orrery, sprint gates and a training bar.
+local lens = V(0,7.2,-9)
+for _,foot in ipairs({V(-2.4,2.1,-4),V(2.4,2.1,-4),V(0,2.1,-8.4)}) do
+	rod(sites,"Tripod",foot,V(0,5.9,-6),0.26,"B49665","Metal")
+end
+rod(sites,"Telescope barrel",V(0,4.9,-3.3),lens,1.45,"A78858","Metal")
+part(sites,"Telescope lens",V(1.55,1.55,1.55),C.new(lens),"93CFD9","Glass","Ball")
+part(sites,"Orrery sun",V(2,2,2),C.new(-21,5.0,5),"9CF5D6","Neon","Ball")
+for i=0,23 do
+	local function orbitPoint(k)
+		local a = k*math.pi/12
+		return V(-21+2.7*math.cos(a),5+0.8*math.cos(a),5+2*math.sin(a))
+	end
+	rod(sites,"Orrery ring",orbitPoint(i),orbitPoint(i+1),0.13,"B3976F","Metal")
+end
+for _,x in ipairs({18.8,23.2}) do
+	part(sites,"Sprint gate",V(0.45,4.8,0.65),C.new(x,4.3,5),"67514A","Metal")
+	part(sites,"Gate light",V(0.48,1.5,0.7),C.new(x,5.6,5),"FFAD76","Neon")
+end
+rod(sites,"Lift bar",V(13,4.3,-17),V(19,4.3,-17),0.25,"D1D8DA","Metal")
+for _,x in ipairs({13.8,14.3,17.7,18.2}) do
+	part(sites,"Weight plate",V(0.4,2,2),C.new(x,4.3,-17),"7884B4","Metal","Cylinder")
+end
+for _,x in ipairs({14.5,17.5}) do
+	part(sites,"Bar rack",V(0.45,2.5,0.6),C.new(x,3.2,-17),"545D7E","Metal")
+end
+for _,path in ipairs({{-20,5,"87D6C9"},{20,5,"F6AD78"},{16,-17,"A7ACFF"},{0,32,"C9AB77"}}) do
+	local target=V(path[1],1.49,path[2])
+	local origin=V(0,1.49,12)
+	for n=1,5 do
+		local pos=origin:Lerp(target,n/6)
+		part(sites,"Wayfinding inlay",V(0.25,0.06,1.6),C.lookAt(pos,target),path[3],"Neon")
+	end
+end
 
 -- Sunset-lit windows and roof silhouettes are fixed across clients.
 math.randomseed(12937)
