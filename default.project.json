@@ -1,0 +1,22 @@
+{
+  "name": "Catch the Moon",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": { "StreamingEnabled": false },
+      "Observatory": { "$path": "world/Observatory.rbxmx" }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 0.7, "Brightness": 1.8,
+        "Ambient": [0.28, 0.30, 0.46], "OutdoorAmbient": [0.32, 0.36, 0.53],
+        "FogColor": [0.10, 0.13, 0.25], "FogStart": 105, "FogEnd": 360
+      },
+      "NightSky": { "$className": "Sky", "$properties": { "CelestialBodiesShown": false, "StarCount": 0 } },
+      "MoonGlow": { "$className": "BloomEffect", "$properties": { "Intensity": 0.26, "Size": 25, "Threshold": 1.1 } }
+    },
+    "ReplicatedStorage": { "MoonCatalog": { "$path": "src/shared/MoonCatalog.luau" } },
+    "ServerScriptService": { "LunarStation": { "$path": "src/server" } },
+    "StarterPlayer": { "StarterPlayerScripts": { "LunarStation": { "$path": "src/client" } } }
+  }
+}
