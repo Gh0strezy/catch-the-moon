@@ -1,6 +1,8 @@
 # Поймай Луну — обсерватория
 
-Откройте **[CatchTheMoon-Observatory.rbxlx](CatchTheMoon-Observatory.rbxlx)** в Roblox Studio и нажмите **Play (F5)**. Для загрузки с GitHub используйте **Download raw file**. Для теста вдвоём выберите **Server & Clients** и двух игроков.
+Откройте **[CatchTheMoon-Meridian.rbxlx](CatchTheMoon-Meridian.rbxlx)** в Roblox Studio и нажмите **Play (F5)**. Для загрузки с GitHub используйте **Download raw file**. Для теста вдвоём выберите **Server & Clients** и двух игроков.
+
+С крыши можно выйти по двум боковым рампам. Западная ведёт к Пассажу Сирены, восточная — к посту картографа. Обе тропы выходят на северный вал Моря Тени. [Атлас мира и постоянные адреса участков](WORLD_ZONES.md).
 
 ## Первый заход
 
@@ -31,12 +33,27 @@
 ```sh
 # После правок геометрии (Lune 0.11.1)
 lune run tools/build-observatory.luau
+lune run tools/build-world.luau
 
 # Сборка места (Rojo 7.7.1)
-rojo build default.project.json -o CatchTheMoon-Observatory.rbxlx
+rojo build default.project.json -o CatchTheMoon-Meridian.rbxlx
 
 # Проверка баланса, тайминга, витрин и переноса прогресса
 luau tests/gameplay.luau
 ```
 
 Для живой синхронизации используйте `rojo serve` и плагин Rojo в тестовой копии. `tests/studio-smoke.luau` запускается через Studio CLI с задачей `RunScript` и локальным файлом новой сборки.
+
+### Окружение
+
+Геометрия павильонов, причалов и дальнего плана находится в `tools/world`. Lune сохраняет модель `world/Meridian.rbxmx` и обновляет атлас. Настройки неба, атмосферы и постобработки находятся в `default.project.json`. Изменения оформления делайте в этих исходниках или переносите из Studio в соответствующий модуль перед сборкой.
+
+Нативный Terrain хранится в `world/LunarTerrain.rbxm`. Он включён в Git, поэтому для сборки плейса на MSI и Fedora достаточно Rojo. Для изменения высот, троп, палитры грунта или положения площадок отредактируйте `tools/world/landscape.luau` и `zones.luau`. На компьютере со Studio, Python 3 и Lune выполните `python tools/bake-terrain.py --studio "<путь к RobloxStudioBeta.exe>"`, затем пересоберите мир. Для Lune вне PATH можно указать `--lune "<путь к lune>"`.
+
+Проверка `tests/world-smoke.luau` в Studio CLI читает реальные воксели восьми участков, проверяет перепады высот на семи маршрутах и проводит персонажа от телескопа через обе рампы. Перед запуском каждого теста скопируйте сборку во временную папку.
+
+```text
+RobloxStudioBeta.exe --task RunScript --localPlaceFile "<абсолютный путь к копии.rbxlx>" --runScriptFile "<абсолютный путь к тесту.luau>" --outputFile "<путь к журналу>" --quitAfterExecution
+```
+
+Предыдущая сборка крыши сохранена в `CatchTheMoon-Observatory.rbxlx`.
