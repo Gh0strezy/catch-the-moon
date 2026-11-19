@@ -51,11 +51,17 @@ local ok,result=pcall(function()
 		task.wait(0.98)
 	end
 	waitFor("strength",function() return d.strength==1 end)
-	local function catch()
+	local function catch(auto)
 		lastCatch=nil
-		event:FireServer("use","Catch")
+		if not auto then event:FireServer("use","Catch") end
 		waitFor("encounter",function() return hunt~=nil end)
 		assert(hunt.width==catalog.window(1) and hunt.goal==catalog.Moons[hunt.index].hits)
+		local moon=workspace:WaitForChild("LassoMoon",5)
+		local loop=workspace:WaitForChild("LassoLoop",5)
+		assert(moon and loop and moon:GetAttribute("OwnerId")==player.UserId)
+		waitFor("loop lands on planet",function()
+			return (loop.Position-moon:GetPivot().Position).Magnitude<0.25
+		end)
 		while hunt do
 			local h=hunt
 			local target=h.start+h.period*h.center
@@ -63,12 +69,27 @@ local ok,result=pcall(function()
 			repeat task.wait() until workspace:GetServerTimeNow()>=target
 			event:FireServer("strike",h.id,h.step,workspace:GetServerTimeNow())
 			waitFor("server advances timing",function() return not hunt or hunt.step~=h.step end)
+			if hunt and hunt.hits==1 then
+				waitFor("first hit pulls the moon closer",function() return moon:GetScale()<0.49 end)
+			end
 		end
 		assert(lastCatch,"capture failed")
+		local grip=player.Character:FindFirstChild("LassoGrip",true)
+		waitFor("miniature in hand",function()
+			return moon.Parent and moon:GetScale()<0.102 and (moon:GetPivot().Position-grip.WorldPosition).Magnitude<1
+		end)
+		waitFor("lasso cleanup",function() return not moon.Parent and not grip.Parent and not loop.Parent end)
 		return catalog.Moons[lastCatch]
 	end
 	move("Catch")
-	local first=catch()
+	waitFor("circle starts hunt on entry",function() return hunt and workspace:FindFirstChild("LassoLoop") end)
+	event:FireServer("cancel")
+	waitFor("cancel removes rope",function() return not hunt and not workspace:FindFirstChild("LassoLoop") end)
+	task.wait(0.3)
+	assert(not hunt,"standing in the circle restarted a cancelled hunt")
+	move("Gym")
+	move("Catch")
+	local first=catch(true)
 	move("Display")
 	event:FireServer("use","Display",1)
 	waitFor("exhibit menu",function() return menu=="Display" end)
@@ -83,14 +104,14 @@ local ok,result=pcall(function()
 	waitFor("returned item",function() return d.slots[1]=="" end)
 	assert(catalog.inBag(d,first.id)==1)
 	move("Catch")
-	while d.cash<44 do catch(); task.wait(0.2) end
+	while d.cash<44 do catch(hunt~=nil); task.wait(0.2) end
 	move("Luck")
 	event:FireServer("buy","Luck")
 	waitFor("bought luck",function() return d.level==1 end)
 	move("Speed")
 	event:FireServer("buy","Speed")
 	waitFor("bought speed",function() return d.speed==1 and player.Character.Humanoid.WalkSpeed==18 end)
-	return "PASS: free camera, training, timed captures, showcase, passive income, return item, luck and speed"
+	return "PASS: circle entry, cancel and re-entry, lasso cast, reel, hand catch, cleanup, free camera, training, showcase, income and upgrades"
 end)
 game.ReplicatedStorage.ExpeditionTest:FireServer("finish",if ok then result else "FAIL: "..tostring(result))
 ]=]

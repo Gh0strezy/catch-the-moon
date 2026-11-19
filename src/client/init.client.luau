@@ -10,7 +10,6 @@ local ui=require(script:WaitForChild("Interface")).new(player:WaitForChild("Play
 local scene=require(script:WaitForChild("MoonScene")).new()
 local event=storage:WaitForChild("MoonStationEvent")
 local encounter, sentStep, sentAt=nil,nil,0
-local revealId=0
 
 Prompts.PromptShown:Connect(function(prompt)
 	local owner=prompt:GetAttribute("OwnerId")
@@ -69,33 +68,28 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-event.OnClientEvent:Connect(function(kind,a,b)
+event.OnClientEvent:Connect(function(kind,a,b,c)
 	if kind=="profile" then
 		local first=ui.data==nil
 		ui.data=a
 		ui:refresh()
-		if first then ui:notice("Подойди к телескопу в центре обсерватории") end
+		if first then ui:notice("Забеги в золотой круг у телескопа, чтобы бросить лассо") end
 	elseif kind=="hunt" then
 		local new=not encounter or encounter.id~=a.id
 		if new then
-			revealId+=1
 			ui:menu(nil)
-			scene:show(Catalog.Moons[a.index],a.index)
 			sentStep=nil
 		end
 		encounter=a
 		ui.bag.Visible=false
 		ui:hunt(a)
-		scene:progress(a)
 	elseif kind=="finish" then
 		encounter=nil
 		ui.bag.Visible=true
 		ui:hunt(nil)
-		scene:progress(nil)
 		ui:notice(a)
-		revealId+=1
-		local id=revealId
-		task.delay(if b then 2.5 else 0,function() if revealId==id then scene:show() end end)
+	elseif kind=="lasso" then scene:progress(a,b)
+	elseif kind=="lassoEnd" then scene:finish(a,b,c)
 	elseif kind=="menu" then ui:menu(a,b)
 	elseif kind=="notice" then ui:notice(a) end
 end)
