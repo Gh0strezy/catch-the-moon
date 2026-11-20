@@ -32,21 +32,33 @@ local function settle(s)
 	s.data.cash+=dollars
 	return dollars>0
 end
-local function endHunt(player,text,index)
+local function endHunt(player,text,index,escaped)
 	local round=hunting[player]
 	hunting[player]=nil
 	event:FireClient(player,"finish",text,index)
-	event:FireAllClients("lassoEnd",player,round.id,index~=nil)
+	event:FireAllClients("lassoEnd",player,round.id,index~=nil,escaped)
 end
 
 local function lassoPacket(round)
-	return {id=round.id,index=round.index,hits=round.hits,goal=round.goal,
+	return {id=round.id,index=round.index,hits=round.hits,goal=round.goal,mistakes=round.mistakes,
 		castAt=round.castAt,heading=round.heading}
 end
 
 local function sendHunt(player,round,feedback)
 	event:FireClient(player,"hunt",round:packet(feedback))
 	event:FireAllClients("lasso",player,lassoPacket(round))
+end
+
+local function showMiss(player,round,feedback)
+	if round.mistakes>=Round.MissLimit then
+		endHunt(player,"Третий промах! Планета сорвалась с лассо.",nil,true)
+	else
+		sendHunt(player,round,feedback)
+	end
+end
+
+local function inputGrace(player)
+	return math.clamp(player:GetNetworkPing()+0.12,0.16,0.42)
 end
 
 local function startHunt(player,s)
@@ -135,19 +147,17 @@ local function strike(player,roundId,step,pressed)
 	if not round or round.id~=roundId then return end
 	if not Stations.near(player,"Catch") then endHunt(player,"Ловля завершена · ты отошёл от телескопа") return end
 	local now=workspace:GetServerTimeNow()
-	local hit=round:judge(step,pressed,now,math.clamp(player:GetNetworkPing()+0.12,0.16,0.42))
+	local hit=round:judge(step,pressed,now,inputGrace(player))
 	if hit==nil then return end
-	if round.mistakes>=3 then endHunt(player,"Планета ушла с орбиты. Можно искать следующую.") return end
+	if not hit then showMiss(player,round,"Мимо! Планета отскочила") return end
 	if round.hits>=round.goal then complete(player,round)
-	else sendHunt(player,round,if hit then "Идеально!" else "Мимо") end
-	if hit then
-		-- A nearby friend's precise hit helps after your first personal success.
-		for friend,other in pairs(hunting) do
-			if friend~=player and other.ownHit and now<=other.expires and Stations.near(friend,"Catch") then
-				other.hits+=1
-				if other.hits>=other.goal then complete(friend,other)
-				else sendHunt(friend,other,"Помощь напарника") end
-			end
+	else sendHunt(player,round,"Идеально!") end
+	-- A nearby friend's precise hit helps after your first personal success.
+	for friend,other in pairs(hunting) do
+		if friend~=player and other.ownHit and now<=other.expires and Stations.near(friend,"Catch") then
+			other.hits+=1
+			if other.hits>=other.goal then complete(friend,other)
+			else sendHunt(friend,other,"Помощь напарника") end
 		end
 	end
 end
@@ -198,10 +208,15 @@ for _,player in ipairs(Players:GetPlayers()) do task.spawn(load,player) end
 task.spawn(function()
 	while not closing do
 		task.wait(0.1)
+		local now=workspace:GetServerTimeNow()
 		for player,s in pairs(sessions) do
 			local inside=Stations.inCatchCircle(player)
 			if inside and not s.inCircle and not s.closed then startHunt(player,s) end
 			s.inCircle=inside
+			local round=hunting[player]
+			if round and now>=round.start+round.period and round:missIfOverdue(now,inputGrace(player)) then
+				showMiss(player,round,"Время вышло! Планета отскочила")
+			end
 		end
 	end
 end)

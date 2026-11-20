@@ -110,9 +110,9 @@ function MoonScene:progress(owner, packet)
 	self.active[owner] = Lasso.new(owner, packet, moon)
 end
 
-function MoonScene:finish(owner, id, caught)
+function MoonScene:finish(owner, id, caught, escaped)
 	local lasso = self.active[owner]
-	if lasso and lasso.id == id then lasso:finish(caught) end
+	if lasso and lasso.id == id then lasso:finish(caught,escaped) end
 end
 
 return MoonScene

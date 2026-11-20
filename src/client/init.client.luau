@@ -26,7 +26,7 @@ end)
 local function hit()
 	if not encounter or ui.overlay.Visible or not ui.data then return end
 	local now=workspace:GetServerTimeNow()
-	if now<encounter.start or (sentStep==encounter.step and now-sentAt<0.8) then return end
+	if now<encounter.start or now>=encounter.start+encounter.period or (sentStep==encounter.step and now-sentAt<0.8) then return end
 	sentStep,sentAt=encounter.step,now
 	event:FireServer("strike",encounter.id,encounter.step,now)
 end
@@ -54,7 +54,7 @@ end,false,Enum.ContextActionPriority.High.Value,Enum.KeyCode.Space,Enum.KeyCode.
 RunService.RenderStepped:Connect(function()
 	if encounter then
 		local elapsed=math.max(0,workspace:GetServerTimeNow()-encounter.start)
-		ui.marker.Position=UDim2.fromScale((elapsed/encounter.period)%1,0.5)
+		ui.marker.Position=UDim2.fromScale(math.min(elapsed/encounter.period,1),0.5)
 	end
 	if ui.overlay.Visible and ui.mode~="Bag" then
 		local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -68,7 +68,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-event.OnClientEvent:Connect(function(kind,a,b,c)
+event.OnClientEvent:Connect(function(kind,a,b,c,d)
 	if kind=="profile" then
 		local first=ui.data==nil
 		ui.data=a
@@ -89,7 +89,7 @@ event.OnClientEvent:Connect(function(kind,a,b,c)
 		ui:hunt(nil)
 		ui:notice(a)
 	elseif kind=="lasso" then scene:progress(a,b)
-	elseif kind=="lassoEnd" then scene:finish(a,b,c)
+	elseif kind=="lassoEnd" then scene:finish(a,b,c,d)
 	elseif kind=="menu" then ui:menu(a,b)
 	elseif kind=="notice" then ui:notice(a) end
 end)
