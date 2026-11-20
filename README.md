@@ -1,4 +1,24 @@
-# Поймай Луну — обсерватория
+# Catch the Moon — орбитальная станция
+
+Откройте [CatchTheMoon-Station.rbxl](CatchTheMoon-Station.rbxl) в Roblox Studio и нажмите F5. Игрок появляется на восьмилучевой звезде под главным телескопом. Восемь мостов ведут к персональным причалам. Назначение базы игроку, покупки и работу лассо предстоит подключить к серверным системам.
+
+[Точки интеграции и пример установки этажа](DESIGN_INTEGRATION.md) · [Атлас участков](WORLD_ZONES.md)
+
+### Сборка и синхронизация станции
+
+В корне репозитория выполните:
+
+```sh
+lune run tools/build-station.luau
+rojo build default.project.json -o CatchTheMoon-Station.rbxl
+rojo serve default.project.json
+```
+
+Генератор рассчитан на Lune 0.11.1, сборка — на Rojo 7.7.1. Готовые модели включены в Git. После изменения модулей геометрии повторите первую команду. Изменения Luau-скриптов Rojo подхватывает сразу. В Studio откройте Plugins → Rojo → Connect, адрес localhost и порт 34872. Для установки совместимого плагина используйте `rojo plugin install`.
+
+Для передачи результата на другой ноутбук пересоберите плейс и включите в коммит исходники и полученные модели. Основной проект Rojo собирает станцию. Предыдущий лунный мир сохранён ниже со своим файлом проекта.
+
+## Архивный плейс «Лунный меридиан»
 
 Откройте **[CatchTheMoon-Meridian.rbxlx](CatchTheMoon-Meridian.rbxlx)** в Roblox Studio и нажмите **Play (F5)**. Для загрузки с GitHub используйте **Download raw file**. Для теста вдвоём выберите **Server & Clients** и двух игроков.
 
@@ -36,17 +56,17 @@ lune run tools/build-observatory.luau
 lune run tools/build-world.luau
 
 # Сборка места (Rojo 7.7.1)
-rojo build default.project.json -o CatchTheMoon-Meridian.rbxlx
+rojo build meridian.project.json -o CatchTheMoon-Meridian.rbxlx
 
 # Проверка баланса, тайминга, витрин и переноса прогресса
 luau tests/gameplay.luau
 ```
 
-Для живой синхронизации используйте `rojo serve` и плагин Rojo в тестовой копии. `tests/studio-smoke.luau` запускается через Studio CLI с задачей `RunScript` и локальным файлом новой сборки.
+Для живой синхронизации архивной карты используйте `rojo serve meridian.project.json` и плагин Rojo в тестовой копии. `tests/studio-smoke.luau` запускается через Studio CLI с задачей `RunScript` и локальным файлом новой сборки.
 
 ### Окружение
 
-Геометрия павильонов, причалов и дальнего плана находится в `tools/world`. Lune сохраняет модель `world/Meridian.rbxmx` и обновляет атлас. Настройки неба, атмосферы и постобработки находятся в `default.project.json`. Изменения оформления делайте в этих исходниках или переносите из Studio в соответствующий модуль перед сборкой.
+Геометрия павильонов, причалов и дальнего плана находится в `tools/world`. Lune сохраняет модель `world/Meridian.rbxmx` и обновляет атлас. Настройки неба, атмосферы и постобработки «Меридиана» находятся в `meridian.project.json`. Изменения оформления делайте в этих исходниках или переносите из Studio в соответствующий модуль перед сборкой.
 
 Нативный Terrain хранится в `world/LunarTerrain.rbxm`. Он включён в Git, поэтому для сборки плейса на MSI и Fedora достаточно Rojo. Для изменения высот, троп, палитры грунта или положения площадок отредактируйте `tools/world/landscape.luau` и `zones.luau`. На компьютере со Studio, Python 3 и Lune выполните `python tools/bake-terrain.py --studio "<путь к RobloxStudioBeta.exe>"`, затем пересоберите мир. Для Lune вне PATH можно указать `--lune "<путь к lune>"`.
 
