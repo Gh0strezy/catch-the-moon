@@ -76,6 +76,10 @@ function B.floor(parent,name,f)
 		A.part(floor,"Composite lintel",V(1.4,1.2,30),f*C(s*25,K.pitch-0.65,-5.5),K.steel)
 		A.part(floor,"Interdeck light",V(0.24,0.22,26),f*C(s*24.25,K.pitch-0.75,-5.5),K.violet,"Neon")
 		K.glassPanel(floor,"Side screen",V(0.32,3.6,25),f*C(s*27.6,1.9,-5.5),true)
+		local hood=f*C(s*22.9,14.2,-5.6)*R(0,0,-s*0.27)
+		A.part(floor,"Cantilevered sunshade",V(7.5,0.65,27),hood,K.armor)
+		A.part(floor,"Graphite soffit",V(5.8,0.25,25),hood*C(0,-0.42,0),K.ink)
+		A.strut(floor,"Raked canopy stay",f:PointToWorldSpace(V(s*26,4.7,8)),f:PointToWorldSpace(V(s*20,14.2,5.7)),0.85,1.05,K.armor)
 	end
 	return floor
 end
@@ -93,6 +97,11 @@ function B.base(parent,axis,i)
 	K.hull(keel,f,0.74,-6.35,2.1,K.steel)
 	for _,s in ipairs({-1,1}) do
 		A.strut(keel,"Load spreader",f:PointToWorldSpace(V(s*23,-3,8)),f:PointToWorldSpace(V(s*10,-9,-9)),2.3,2.6,K.armor)
+		local wing=f*C(s*29.5,-4.2,-5)*R(0,0,s*0.38)
+		A.part(keel,"Radiator frame",V(8,0.55,24),wing,K.steel)
+		for j=-1,1 do
+			A.part(keel,"Violet ceramic radiator",V(7.4,0.14,7.55),wing*C(0,0.35,j*7.9),"565C82","Metal")
+		end
 		local a,b=f:PointToWorldSpace(V(s*27.8,-1.45,11)),f:PointToWorldSpace(V(0,-1.45,32.8))
 		A.strut(keel,"Prow pinstripe",a,b,0.45,0.3,K.violet,"Neon")
 	end

@@ -72,6 +72,11 @@ return function(world)
 	ring(deck,"Promenade inlay",1.45,48,0.23,0.10,K.steel,"Metal",48)
 	for i=1,8 do
 		local f=R(0,math.rad(22.5+(i-1)*45),0)
+		for _,side in ipairs({-1,1}) do
+			local cheek=f*C(side*6.3,1.47,39)*R(0,-side*0.05,0)
+			A.part(deck,"Titanium apron insert",V(2.5,0.07,19),cheek,K.steel,"Metal")
+			A.part(deck,"Azimuth stripe",V(0.26,0.06,12),cheek*C(-side*0.92,0.08,2),K.gold)
+		end
 		A.part(deck,"Dock approach",V(10,0.09,16),f*C(0,1.46,58),K.steel,"DiamondPlate")
 		for _,x in ipairs({-6.5,6.5}) do
 			A.part(deck,"Dock threshold",V(0.38,0.15,9),f*C(x,1.49,62),K.teal,"Neon")

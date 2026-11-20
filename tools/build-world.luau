@@ -3,7 +3,7 @@ local A=require("./world/architecture")
 local hub=require("./world/meridian")
 local sites=require("./world/destinations")
 local zones=require("./world/zones")
-local guide=require("./world/zone-guide")
+local guide=require("./station/zone-guide")
 local root=A.object("Model",nil,"World")
 local groups={}
 for _,name in ipairs({"MainHub","MoonSurface","FutureLocations","ReservedAreas","DistantSky"}) do

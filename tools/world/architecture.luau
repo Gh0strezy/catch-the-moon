@@ -55,7 +55,8 @@ function A.plaque(parent,frame,width,caption)
 	gui.Face,gui.CanvasSize,gui.LightInfluence=r.Enum.NormalId.Front,r.Vector2.new(width*70,95),0.25
 	local label=A.object("TextLabel",gui,"Destination")
 	label.Size,label.BackgroundTransparency,label.Text=r.UDim2.fromScale(1,1),1,caption
-	label.TextColor3,label.Font,label.TextScaled=r.Color3.fromHex("F1DDB5"),r.Enum.Font.GothamMedium,true
+	label.TextColor3,label.TextScaled=r.Color3.fromHex("F1DDB5"),true
+	label.FontFace=r.Font.new("rbxasset://fonts/families/Montserrat.json",r.Enum.FontWeight.Medium,r.Enum.FontStyle.Normal)
 end
 function A.socket(parent,frame)
 	local p=A.part(parent,"Mooring plate",V(6,0.24,5),frame*C(0,0.18,0),A.brass)
