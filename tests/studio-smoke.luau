@@ -100,7 +100,37 @@ local ok,result=pcall(function()
 	repeat task.wait() until workspace:GetServerTimeNow()>=target
 	event:FireServer("strike",firstPass.id,firstPass.step,workspace:GetServerTimeNow())
 	waitFor("perfect hit",function() return hunt and hunt.hits==1 end)
+	-- Read the rendered character, including upgraded R15 AnimationConstraints.
+	local char=player.Character
+	local root=char.HumanoidRootPart
+	local back=char:FindFirstChild("LassoGrip",true)
+	local front=char:FindFirstChild("LassoFrontGrip",true)
+	assert(back and front,"two hand contacts")
+	local function sampleGrip()
+		return root.CFrame:PointToObjectSpace(back.WorldPosition),root.CFrame:PointToObjectSpace(front.WorldPosition)
+	end
+	local began=os.clock()
+	repeat game:GetService("RunService").RenderStepped:Wait() until os.clock()-began>=0.23
+	local extendedRight,extendedLeft=sampleGrip()
+	local foot=char:FindFirstChild("LeftFoot")
+	local planted=foot and foot.Position
 	waitFor("gold impact",function() return missedLoop:FindFirstChild("LassoImpact_hit") end)
+	repeat game:GetService("RunService").RenderStepped:Wait() until os.clock()-began>=0.60
+	local pulledRight,pulledLeft=sampleGrip()
+	local size=root.Size.Y/2
+	assert((pulledRight-extendedRight).Magnitude>0.65*size and (pulledLeft-extendedLeft).Magnitude>0.65*size,
+		"both hands must travel on the character during the haul")
+	if foot and root.AssemblyLinearVelocity.Magnitude<1 then
+		assert((foot.Position-planted).Magnitude<0.42*size,"support foot slid during the pull")
+	end
+	local frontLine,backLine=false,false
+	for _,line in missedLoop:GetChildren() do
+		if line:IsA("Beam") and line.Enabled then
+			frontLine=frontLine or line.Attachment0==front
+			backLine=backLine or (line.Attachment0==back and line.Attachment1==front)
+		end
+	end
+	assert(frontLine and backLine,"rope must pass through both palms")
 	local skipped=hunt
 	waitFor("unanswered pass loses progress",function() return hunt and hunt.mistakes==1 and hunt.hits==0 end)
 	waitFor("miss draws broken strokes",function() return missedLoop:FindFirstChild("LassoImpact_miss") end)

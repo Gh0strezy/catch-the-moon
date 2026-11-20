@@ -2,12 +2,14 @@ local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local VRService = game:GetService("VRService")
 local Impact = require(script.Parent:WaitForChild("LassoImpact"))
+local PullPose = require(script.Parent:WaitForChild("PullPose"))
 local Lasso = {}
 Lasso.__index = Lasso
 
 local windup = 0.26
 local castTime = 0.46
-local reelTime = 0.62
+local reelTime = 1.22
+local catchDuration = 1.9
 local gold = Color3.fromHex("FFD78A")
 local pearl = Color3.fromHex("FFF2D6")
 local ropeColor = ColorSequence.new(gold, pearl)
@@ -97,7 +99,8 @@ function Lasso:bindHand()
 	if not char then return false end
 	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not hand or not root then return false end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not hand or not root or not humanoid then return false end
 	self.character, self.root = char, root
 	local grip = Instance.new("Attachment")
 	local handle = hand:FindFirstChild("RightGripAttachment")
@@ -105,14 +108,20 @@ function Lasso:bindHand()
 	grip.Name, grip.Parent = "LassoGrip", hand
 	self.grip = grip
 	self.rope = beam(self.rig, grip, self.nodes[1], 0.085)
-	local shoulder = char:FindFirstChild("RightShoulder", true) or char:FindFirstChild("Right Shoulder", true)
-	if shoulder and shoulder:IsA("Motor6D") then
-		self.shoulder, self.rest = shoulder, shoulder.C0
+	local function bindLeft()
+		local left = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
+		if self.leftGrip or not left then return end
+		local handle = left:FindFirstChild("LeftGripAttachment")
+		local contact = Instance.new("Attachment")
+		contact.Position = if handle then handle.Position else Vector3.new(0,-left.Size.Y*0.45,0)
+		contact.Name,contact.Parent = "LassoFrontGrip",left
+		self.leftGrip = contact
+		self.between = beam(self.rig,grip,contact,0.085)
+		self.between.Enabled = false
 	end
-	local waist = char:FindFirstChild("Waist",true)
-	if waist and waist:IsA("Motor6D") then self.waist,self.waistRest = waist,waist.C0 end
-	local arm = char:FindFirstChild("LeftShoulder",true) or char:FindFirstChild("Left Shoulder",true)
-	if arm and arm:IsA("Motor6D") then self.left,self.leftRest = arm,arm.C0 end
+	bindLeft()
+	self.handAdded = char.ChildAdded:Connect(bindLeft)
+	self.pose = PullPose.new(self,humanoid)
 	self.rig.Parent = workspace
 	return true
 end
@@ -126,13 +135,12 @@ function Lasso:setHits(packet)
 	local fraction = packet.hits / packet.goal
 	if packet.mistakes>self.mistakes then
 		self.recoil,self.pulse = 1,0
+		self.pullAt,self.missAt = nil,workspace:GetServerTimeNow()
 		if self.position then self:impact("miss",self.position) end
 	elseif fraction>self.target then
-		self.pulse,self.recoil = 1,0
-		if self.position then
-			self:impact("hit",self.position)
-			self.sparks:Emit(12)
-		end
+		self.pullAt,self.missAt = workspace:GetServerTimeNow(),nil
+		self.startProgress,self.struck = self.progress,false
+		self.pulse,self.recoil = 0,0
 	end
 	self.target,self.mistakes = fraction,packet.mistakes
 end
@@ -162,15 +170,24 @@ function Lasso:updateCloseup(palm,elapsed)
 	if not camera or camera~=workspace.CurrentCamera or camera.CameraType~=Enum.CameraType.Scriptable then return end
 	local offset = self.root.Position-self.cameraOrigin
 	local wide = self.wide+offset
-	local focus = palm:Lerp(self.root.Position+Vector3.yAxis*1.55,0.32)
-	local direction = wide.Position-focus
-	if direction.Magnitude<0.2 then direction = -self.root.CFrame.LookVector end
-	local lens = direction.Unit*4.5 + self.root.CFrame.RightVector*0.8 + Vector3.yAxis*0.3
+	local release = ease((elapsed-0.75)/0.5)
+	local focus = self.root.Position:Lerp(palm,0.34+0.5*release)+Vector3.yAxis*(0.45-0.34*release)
+	local shoulderSide = if (wide.Position-focus):Dot(self.orientation.RightVector)<-1 then -1 else 1
+	local lens = self.orientation:VectorToWorldSpace(Vector3.new(shoulderSide*(6.0-2.4*release),1.4, -2.7))
 	local wall = workspace:Raycast(focus,lens,self.cameraFilter)
 	if wall then lens = lens.Unit*math.max(0.1,wall.Distance-0.2) end
 	local close = CFrame.lookAt(focus+lens,focus)
-	local weight = ease((elapsed-0.05)/0.39)*(1-ease((elapsed-0.83)/0.36))
-	camera.CFrame = wide:Lerp(close,weight)
+	local weight = ease(elapsed/0.32)*(1-ease((elapsed-1.46)/0.4))
+	-- Orbit round the subject instead of cutting through the body on a reverse angle.
+	local wideLens=wide.Position-focus
+	local blendDir=wideLens:Lerp(lens,weight)
+	if blendDir.Magnitude>0.05 and wideLens.Magnitude>0.1 then
+		local position=focus+blendDir.Unit*(wideLens.Magnitude+(lens.Magnitude-wideLens.Magnitude)*weight)
+		local occluder=workspace:Raycast(focus,position-focus,self.cameraFilter)
+		if occluder then position=focus+blendDir.Unit*math.max(0.1,occluder.Distance-0.2) end
+		close=CFrame.new(position)*wide.Rotation:Lerp(close.Rotation,weight)
+	else close=wide:Lerp(close,weight) end
+	camera.CFrame = close
 	camera.Focus = (self.focus+offset):Lerp(CFrame.new(focus),weight)
 end
 
@@ -181,8 +198,15 @@ function Lasso:step(now, dt)
 	if self.owner.Character ~= self.character or not self.grip.Parent or not self.root.Parent then return false end
 	local age = math.max(0, now-self.castAt)
 	local finishAge = if self.endedAt then now-self.endedAt else 0
-	if self.endedAt and finishAge >= (if self.caught then reelTime+0.6 else 0.42) then return false end
-	self.progress += (self.target-self.progress)*(1-math.exp(-dt*7))
+	if self.endedAt and finishAge >= (if self.caught then catchDuration else 0.42) then return false end
+	local tugAge = if self.pullAt then now-self.pullAt else math.huge
+	if self.pullAt then
+		self.progress = self.startProgress+(self.target-self.startProgress)*ease((tugAge-0.28)/0.37)
+		if not self.struck and tugAge>=0.39 and not self.endedAt then
+			self.struck,self.pulse = true,1
+			if self.position then self:impact("hit",self.position); self.sparks:Emit(12) end
+		end
+	else self.progress += (self.target-self.progress)*(1-math.exp(-dt*7)) end
 	self.pulse = math.max(0,self.pulse-dt*3.5)
 	self.recoil = math.max(0,self.recoil-dt*1.65)
 
@@ -199,11 +223,13 @@ function Lasso:step(now, dt)
 	local scale = 0.50-0.24*pull
 	local palm = self.grip.WorldPosition
 	if self.camera then self:updateCloseup(palm,finishAge) end
-	local reel = if self.endedAt and self.caught then ease((finishAge-0.08)/(reelTime-0.08)) else 0
+	local reel = if self.endedAt and self.caught then ease((finishAge-0.34)/(reelTime-0.34)) else 0
 	if self.endedAt then
 		local start = self.endPosition or position
 		if self.caught then
+			local resistance=math.sin(math.pi*ease(finishAge/0.43))*0.58
 			position = start:Lerp(palm+Vector3.yAxis*0.38, reel) + Vector3.yAxis*math.sin(math.pi*reel)*1.7
+				+ aim.LookVector*resistance
 			scale = self.endScale+(0.095-self.endScale)*reel
 		else
 			position = start + aim:VectorToWorldSpace(Vector3.new(1,5,-7))*ease(finishAge/0.42)
@@ -242,7 +268,13 @@ function Lasso:step(now, dt)
 		arc.Enabled = visible
 	end
 	self.rope.Color = ropeTint
-	self.rope.CurveSize0 = (1-throw)*1.7 + (1-pull)*0.45+3*kick
+	local twoHands = self.leftGrip and self.leftGrip.Parent and age>=0.69 and reel<0.77
+	self.rope.Attachment0 = if twoHands then self.leftGrip else self.grip
+	if self.between then
+		self.between.Enabled = visible and twoHands==true
+		self.between.Color = ropeTint
+	end
+	self.rope.CurveSize0 = (1-throw)*1.7 + (1-pull)*0.12+2.5*kick
 	self.rope.CurveSize1 = -self.rope.CurveSize0
 	self.rope.Width0, self.rope.Enabled = 0.085+self.pulse*0.065, visible
 	local tracing = (throw>0 and throw<1) or self.pulse>0
@@ -256,15 +288,6 @@ function Lasso:step(now, dt)
 	if now>=self.nextEcho and (kick>0.2 or (reel>0.08 and reel<0.91)) then
 		self.nextEcho=now+0.075
 		Impact.echo(self.rig,position,scale*9.6,accent)
-	end
-	if self.shoulder and self.shoulder.Parent then
-		local lift = 0.55 + swing*1.55 - throw*1.08 + self.pulse*0.46 + reel*0.35-kick*0.28
-		self.shoulder.C0 = CFrame.new(self.rest.Position)*CFrame.Angles(lift,0,0.18)*self.rest.Rotation
-	end
-	local twist = 0.5*swing*(1-throw)-0.34*self.pulse+0.4*kick
-	if self.waist and self.waist.Parent then self.waist.C0 = self.waistRest*CFrame.Angles(0,twist,-0.16*kick) end
-	if self.left and self.left.Parent then
-		self.left.C0 = CFrame.new(self.leftRest.Position)*CFrame.Angles(0.22+0.52*reel+0.36*self.pulse,0,-0.25-twist)*self.leftRest.Rotation
 	end
 	if self.caught and reel>=0.96 and not self.flared then
 		self.flared = true
@@ -280,9 +303,9 @@ function Lasso:destroy()
 		self.camera.CFrame,self.camera.Focus = self.wide+shift,self.focus+shift
 		self.camera.CameraType = Enum.CameraType.Custom
 	end
-	if self.shoulder and self.shoulder.Parent then self.shoulder.C0 = self.rest end
-	if self.left and self.left.Parent then self.left.C0 = self.leftRest end
-	if self.waist and self.waist.Parent then self.waist.C0 = self.waistRest end
+	if self.handAdded then self.handAdded:Disconnect() end
+	if self.pose then self.pose:destroy() end
+	if self.leftGrip then self.leftGrip:Destroy() end
 	if self.gui then self.gui:Destroy() end
 	if self.grip then self.grip:Destroy() end
 	self.rig:Destroy()

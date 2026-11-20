@@ -71,7 +71,7 @@ function MoonScene.new()
 	local self = setmetatable({active = {}, idle = makeMoon(), elapsed = 0, time = 0}, MoonScene)
 	RunService:BindToRenderStep("LunarObservatoryView", Enum.RenderPriority.Camera.Value+1, function(dt)
 		self.elapsed += dt
-		if self.elapsed < 1/30 then return end
+		if not self.active[Players.LocalPlayer] and self.elapsed < 1/30 then return end
 		dt, self.elapsed = self.elapsed, 0
 		self.time += dt
 		local now = workspace:GetServerTimeNow()
