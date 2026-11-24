@@ -10,7 +10,6 @@ local ui=require(script:WaitForChild("Interface")).new(player:WaitForChild("Play
 local scene=require(script:WaitForChild("MoonScene")).new()
 local event=storage:WaitForChild("MoonStationEvent")
 local encounter, sentStep, sentAt=nil,nil,0
-local revealId=0
 
 Prompts.PromptShown:Connect(function(prompt)
 	local owner=prompt:GetAttribute("OwnerId")
@@ -27,7 +26,7 @@ end)
 local function hit()
 	if not encounter or ui.overlay.Visible or not ui.data then return end
 	local now=workspace:GetServerTimeNow()
-	if now<encounter.start or (sentStep==encounter.step and now-sentAt<0.8) then return end
+	if now<encounter.start or now>=encounter.start+encounter.period or (sentStep==encounter.step and now-sentAt<0.8) then return end
 	sentStep,sentAt=encounter.step,now
 	event:FireServer("strike",encounter.id,encounter.step,now)
 end
@@ -55,7 +54,7 @@ end,false,Enum.ContextActionPriority.High.Value,Enum.KeyCode.Space,Enum.KeyCode.
 RunService.RenderStepped:Connect(function()
 	if encounter then
 		local elapsed=math.max(0,workspace:GetServerTimeNow()-encounter.start)
-		ui.marker.Position=UDim2.fromScale((elapsed/encounter.period)%1,0.5)
+		ui.marker.Position=UDim2.fromScale(math.min(elapsed/encounter.period,1),0.5)
 	end
 	if ui.overlay.Visible and ui.mode~="Bag" then
 		local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -69,33 +68,28 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-event.OnClientEvent:Connect(function(kind,a,b)
+event.OnClientEvent:Connect(function(kind,a,b,c,d)
 	if kind=="profile" then
 		local first=ui.data==nil
 		ui.data=a
 		ui:refresh()
-		if first then ui:notice("Подойди к телескопу в центре обсерватории") end
+		if first then ui:notice("Забеги в золотой круг у телескопа, чтобы бросить лассо") end
 	elseif kind=="hunt" then
 		local new=not encounter or encounter.id~=a.id
 		if new then
-			revealId+=1
 			ui:menu(nil)
-			scene:show(Catalog.Moons[a.index],a.index)
 			sentStep=nil
 		end
 		encounter=a
 		ui.bag.Visible=false
 		ui:hunt(a)
-		scene:progress(a)
 	elseif kind=="finish" then
 		encounter=nil
 		ui.bag.Visible=true
 		ui:hunt(nil)
-		scene:progress(nil)
 		ui:notice(a)
-		revealId+=1
-		local id=revealId
-		task.delay(if b then 2.5 else 0,function() if revealId==id then scene:show() end end)
+	elseif kind=="lasso" then scene:progress(a,b)
+	elseif kind=="lassoEnd" then scene:finish(a,b,c,d)
 	elseif kind=="menu" then ui:menu(a,b)
 	elseif kind=="notice" then ui:notice(a) end
 end)

@@ -48,4 +48,23 @@ assert(round:judge(1,miss,miss,0.2)==nil)
 local ideal=round.start+round.period*0.5
 assert(round:judge(2,ideal,ideal+1,0.2)==nil)
 assert(round:judge(2,ideal,ideal+0.05,0.2)==true and round.hits==1 and round.ownHit)
+local step,edge=round.step,round.start+round.period
+assert(not round:missIfOverdue(edge-0.001,0.2))
+assert(round:judge(step,edge,edge,0.2)==nil,"endpoint must not wrap")
+assert(round:missIfOverdue(edge,0.2) and round.hits==0 and round.mistakes==2)
+assert(not round:missIfOverdue(edge+0.22,0.2),"duplicate timeout")
+assert(round:judge(step,edge-0.05,edge+0.1,0.2)==nil,"old input after timeout")
+local saved=round.start+round.period*0.5
+assert(round:judge(round.step,saved,saved,0.2) and round.hits==1 and round.mistakes==2)
+assert(not round:judge(round.step,round.start+0.05,round.start+0.05,0.2))
+assert(round.mistakes==Round.MissLimit and round.hits==0)
+local grace=Round.new(2,1,C.Moons[1],0.3,{NextNumber=function() return 0.78 end},100)
+local pressed=grace.start+grace.period*0.92
+assert(not grace:missIfOverdue(grace.start+grace.period+0.05,0.24))
+assert(grace:judge(grace.step,pressed,grace.start+grace.period+0.05,0.24),"on-time click arriving in grace")
+local untouched=Round.new(3,1,C.Moons[1],0.16,random,100)
+for missCount=1,Round.MissLimit do
+	assert(untouched:missIfOverdue(untouched.start+untouched.period+0.3,0.2))
+	assert(untouched.mistakes==missCount and untouched.hits==0)
+end
 print("PASS: migration, inventory ownership, rentals, economy, strength, rarity and timing")

@@ -179,7 +179,9 @@ function Interface:hunt(packet)
 	local planet=Catalog.Moons[packet.index]
 	self.target.Text=planet.name.."   ·   "..planet.rarity
 	self.progress.Text=string.format("%d / %d",packet.hits,packet.goal)
-	self.hint.Text=(packet.feedback or "Нажми в зелёной зоне").."   ·   Промахи "..packet.mistakes.."/3"
+	local warning = if packet.mistakes==packet.missLimit-1 then "Последний шанс" else "Промахи "..packet.mistakes.."/"..packet.missLimit
+	self.hint.Text=(packet.feedback or "Нажми в зелёной зоне").."   ·   "..warning
+	self.hint.TextColor3=if packet.mistakes==packet.missLimit-1 then Color3.fromHex("FFAA9F") else muted
 	self.zone.Size=UDim2.fromScale(packet.width,1)
 	self.zone.Position=UDim2.fromScale(packet.center-packet.width/2,0)
 end

@@ -1,4 +1,7 @@
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Catalog = require(game.ReplicatedStorage:WaitForChild("MoonCatalog"))
+local Lasso = require(script.Parent:WaitForChild("Lasso"))
 local MoonScene = {}
 MoonScene.__index = MoonScene
 
@@ -13,10 +16,10 @@ local function part(model, name, shape, size, frame, color, material)
 	return p
 end
 
-local function orbit(model, width, depth, tilt, color, thickness)
+local function orbit(model, width, depth, tilt, color, thickness, segments)
 	local last
-	for i = 0, 48 do
-		local a = 2 * math.pi * i / 48
+	for i = 0, segments do
+		local a = 2 * math.pi * i / segments
 		local v = tilt:PointToWorldSpace(Vector3.new(math.cos(a)*width, 0, math.sin(a)*depth))
 		if last then
 			local p = part(model, "Orbit", Enum.PartType.Block, Vector3.new(thickness, thickness, (v-last).Magnitude+0.02),
@@ -27,69 +30,17 @@ local function orbit(model, width, depth, tilt, color, thickness)
 	end
 end
 
-function MoonScene.new()
-	local self = setmetatable({pulse = 0, time = 0, elapsed = 0, anchors = {}, beams = {}}, MoonScene)
-	for _,x in ipairs({-6,6}) do
-		local peg = part(workspace,"TetherOrigin",Enum.PartType.Block,Vector3.one*0.1,
-			CFrame.new(x,4.02,6.5),Color3.new(1,1,1))
-		peg.Transparency = 1
-		local hook = Instance.new("Attachment")
-		hook.Parent = peg
-		table.insert(self.anchors,hook)
-	end
-	self:show()
-	RunService:BindToRenderStep("LunarObservatoryView", Enum.RenderPriority.Camera.Value+1, function(dt)
-		self.time += dt
-		self.elapsed += dt
-		self.pulse = math.max(0, self.pulse-dt*3.5)
-		if self.elapsed < 1/30 then return end
-		self.elapsed = 0
-		self.model:PivotTo(CFrame.new(center + Vector3.new(0, math.sin(self.time*1.3)*0.21+self.pulse*0.26,0))
-			* CFrame.Angles(0, self.time*0.065, self.pulse*0.029))
-	end)
-	return self
-end
-
-function MoonScene:progress(packet)
-	for i, beam in ipairs(self.beams) do
-		beam.Enabled = packet ~= nil
-		if packet then beam.CurveSize0 = (4-i) * (1-packet.hits/packet.goal) end
-	end
-	if packet and packet.hits>0 then self.pulse=1 end
-end
-
-function MoonScene:show(moon, index)
-	if self.model then self.model:Destroy() end
+local function makeMoon(moon, index, compact)
 	local model = Instance.new("Model")
-	model.Name = "PersonalMoon"
+	model.Name = if moon then "LassoMoon" else "PersonalMoon"
 	local tint = Color3.fromHex(if moon then moon.color else "D7E2F3")
 	local shade = Color3.fromHex(if moon then moon.dark else "879ABC")
 	local ball = part(model, "LunarSurface", Enum.PartType.Ball, Vector3.one*radius*2, CFrame.identity, tint)
 	model.PrimaryPart = ball
-	table.clear(self.beams)
-	for i, hook in ipairs(self.anchors) do
-		local endpoint = Instance.new("Attachment")
-		endpoint.Position = Vector3.new(if i==1 then -1.9 else 1.9,-3.9,1.8)
-		endpoint.Parent = ball
-		local beam = Instance.new("Beam")
-		beam.Attachment0,beam.Attachment1 = hook,endpoint
-		beam.Color = ColorSequence.new(Color3.fromHex("FFCB80"),Color3.fromHex("D9F6FF"))
-		beam.Width0,beam.Width1,beam.FaceCamera,beam.LightEmission = 0.13,0.07,true,0.9
-		beam.Enabled,beam.Parent = false,ball
-		table.insert(self.beams,beam)
-	end
-	if moon then
-		local sparks = Instance.new("ParticleEmitter")
-		sparks.Rate, sparks.Lifetime, sparks.Speed = 0,NumberRange.new(0.6,1.15),NumberRange.new(6,13)
-		sparks.SpreadAngle = Vector2.new(180,180)
-		sparks.Color, sparks.LightEmission = ColorSequence.new(tint),1
-		sparks.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.35),NumberSequenceKeypoint.new(1,0)})
-		sparks.Parent = ball
-		task.defer(function() if sparks:IsDescendantOf(workspace) then sparks:Emit(28) end end)
-	end
 	local rng = Random.new(116)
-	for i=1,37 do
-		local y = 1 - (i-0.5)*2/37
+	local craterCount = if compact then 9 else 37
+	for i=1,craterCount do
+		local y = 1 - (i-0.5)*2/craterCount
 		local a = i*2.39996
 		local n = Vector3.new(math.sqrt(1-y*y)*math.cos(a), y, math.sqrt(1-y*y)*math.sin(a))
 		local tangent = n:Cross(Vector3.yAxis).Unit
@@ -100,21 +51,68 @@ function MoonScene:show(moon, index)
 			surface*CFrame.new(0.028,size*0.03,0),tint:Lerp(shade,0.55))
 	end
 	local tilt = CFrame.Angles(math.rad(-12),0,math.rad(-19))
-	orbit(model,7.2,6.3,tilt,Color3.fromHex("DEB67D"),0.052)
+	local segments = if compact then 20 else 48
+	orbit(model,7.2,6.3,tilt,Color3.fromHex("DEB67D"),0.052,segments)
 	if index and index >= 3 then
-		orbit(model,7.6,7,tilt,tint,0.11)
+		orbit(model,7.6,7,tilt,tint,0.11,segments)
 	end
 	if index and index >= 4 then
 		part(model,"Satellite",Enum.PartType.Ball,Vector3.one*1.15,tilt*CFrame.new(-7,0,1),shade,Enum.Material.Neon)
 	end
 	if index == 5 then
-		orbit(model,7.5,6.8,CFrame.Angles(0,0,1.12),tint,0.09)
+		orbit(model,7.5,6.8,CFrame.Angles(0,0,1.12),tint,0.09,segments)
 	end
 	local glow = Instance.new("PointLight")
 	glow.Color, glow.Brightness, glow.Range, glow.Parent = tint, 2, 32, ball
-	model:PivotTo(CFrame.new(center))
-	model.Parent = workspace
-	self.model = model
+	return model
+end
+
+function MoonScene.new()
+	local self = setmetatable({active = {}, idle = makeMoon(), elapsed = 0, time = 0}, MoonScene)
+	RunService:BindToRenderStep("LunarObservatoryView", Enum.RenderPriority.Camera.Value+1, function(dt)
+		self.elapsed += dt
+		if not self.active[Players.LocalPlayer] and self.elapsed < 1/30 then return end
+		dt, self.elapsed = self.elapsed, 0
+		self.time += dt
+		local now = workspace:GetServerTimeNow()
+		for owner,lasso in pairs(self.active) do
+			if not lasso:step(now,dt) then self:remove(owner) end
+		end
+		if next(self.active) == nil then
+			self.idle:PivotTo(CFrame.new(center + Vector3.yAxis*math.sin(self.time*1.3)*0.21)
+				* CFrame.Angles(0,self.time*0.065,0))
+			if not self.idle.Parent then self.idle.Parent = workspace end
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(owner) self:remove(owner) end)
+	return self
+end
+
+function MoonScene:remove(owner)
+	local lasso = self.active[owner]
+	if lasso then
+		lasso:destroy()
+		self.active[owner] = nil
+	end
+end
+
+function MoonScene:progress(owner, packet)
+	if not owner then return end
+	local lasso = self.active[owner]
+	if lasso and lasso.id == packet.id then
+		lasso:setHits(packet)
+		return
+	end
+	self:remove(owner)
+	self.idle.Parent = nil
+	local moon = makeMoon(Catalog.Moons[packet.index], packet.index, owner~=Players.LocalPlayer)
+	moon:SetAttribute("OwnerId", owner.UserId)
+	self.active[owner] = Lasso.new(owner, packet, moon)
+end
+
+function MoonScene:finish(owner, id, caught, escaped)
+	local lasso = self.active[owner]
+	if lasso and lasso.id == id then lasso:finish(caught,escaped) end
 end
 
 return MoonScene

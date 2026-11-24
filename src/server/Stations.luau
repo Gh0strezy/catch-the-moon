@@ -2,6 +2,7 @@ local Catalog = require(game.ReplicatedStorage.MoonCatalog)
 local Stations = {}
 local hub = workspace:WaitForChild("Observatory")
 local static = hub:WaitForChild("Stations")
+local catchRing = hub:WaitForChild("TelescopeDeck"):WaitForChild("Azimuth scale")
 local gallery = Instance.new("Folder")
 gallery.Name, gallery.Parent = "Gallery", hub
 local plots, owners, floors = {}, {}, {}
@@ -107,11 +108,28 @@ function Stations.render(player,data)
 	end
 end
 
-function Stations.near(player,key,slot)
+local function livingRoot(player)
 	local char=player.Character
 	local root=char and char:FindFirstChild("HumanoidRootPart")
 	local humanoid=char and char:FindFirstChildOfClass("Humanoid")
-	if not root or not humanoid or humanoid.Health<=0 then return false end
+	return if root and humanoid and humanoid.Health>0 then root else nil
+end
+
+local function overRing(position)
+	local offset = position - catchRing.Position
+	local radius = catchRing.Size.Y / 2
+	return offset.Y >= -1 and offset.Y <= 10 and offset.X^2 + offset.Z^2 <= radius^2
+end
+
+function Stations.inCatchCircle(player)
+	local root = livingRoot(player)
+	return root ~= nil and overRing(root.Position)
+end
+
+function Stations.near(player,key,slot)
+	local root=livingRoot(player)
+	if not root then return false end
+	if key=="Catch" and overRing(root.Position) then return true end
 	local part
 	if key=="Display" then
 		part=plots[player] and plots[player].pads[slot]
