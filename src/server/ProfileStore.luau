@@ -5,6 +5,7 @@ local Catalog = require(game.ReplicatedStorage.MoonCatalog)
 
 local ProfileStore = {}
 ProfileStore.__index = ProfileStore
+local CURRENT_VERSION = 3
 local LEASE_SECONDS = 180
 
 function ProfileStore.open(player)
@@ -21,9 +22,9 @@ function ProfileStore.open(player)
 		local ok, record = pcall(function()
 			self.store = DataStoreService:GetDataStore("CatchTheMoon_v1")
 			return self.store:UpdateAsync(self.key, function(old)
-				if old and old.version ~= 1 and old.version ~= 2 then return nil end
+				if old and old.version ~= 1 and old.version ~= 2 and old.version ~= CURRENT_VERSION then return nil end
 				if old and old.owner and old.owner ~= self.token and old.expires > os.time() then return nil end
-				return { version = 2, data = Catalog.newProfile(old and old.data),
+				return { version = CURRENT_VERSION, data = Catalog.newProfile(old and old.data),
 					owner = self.token, expires = os.time() + LEASE_SECONDS }
 			end)
 		end)
@@ -48,7 +49,7 @@ function ProfileStore:save(release)
 		local ok, stored = pcall(function()
 			return self.store:UpdateAsync(self.key, function(old)
 				if not old or old.owner ~= self.token then return nil end
-				return { version = 2, data = snapshot, owner = if release then nil else self.token,
+				return { version = CURRENT_VERSION, data = snapshot, owner = if release then nil else self.token,
 					expires = if release then 0 else os.time() + LEASE_SECONDS }
 			end)
 		end)

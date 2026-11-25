@@ -1,4 +1,5 @@
 local Catalog = require(game.ReplicatedStorage.MoonCatalog)
+local PlanetModel = require(game.ReplicatedStorage.PlanetModel)
 local Stations = {}
 local hub = workspace:WaitForChild("Observatory")
 local static = hub:WaitForChild("Stations")
@@ -43,12 +44,12 @@ local labels={
 	Catch={"Телескоп","Искать планету","F1CB88",7},
 	Luck={"Удача","Улучшения","93E7CC",5.4},
 	Speed={"Скорость","Улучшения","FFC299",5.6},
-	Gym={"Тренажёр силы","Поднять штангу","C1BDFF",5.8},
+	Gym={"Тренажёр силы","Открыть тренировку","C1BDFF",6.8},
 }
 for key,info in pairs(labels) do
 	local p=static:WaitForChild(key)
 	sign(p,info[1],info[3],info[4])
-	prompt(p,key,info[1],info[2],if key=="Gym" then 0.55 else 0)
+	prompt(p,key,info[1],info[2])
 end
 
 local entry=block(gallery,"GalleryEntrance",Vector3.new(12,0.6,8),CFrame.new(0,1.15,33),"44526A")
@@ -93,16 +94,13 @@ function Stations.render(player,data)
 		pad:SetAttribute("ItemId",id)
 		local previous=pad:FindFirstChild("Exhibit")
 		if previous then previous:Destroy() end
-		local moon=Catalog.ById[id]
-		if moon then
-			local ball=block(pad,"Exhibit",Vector3.one*2.7,CFrame.new(pad.Position+Vector3.yAxis*2.8),moon.color,Enum.Material.SmoothPlastic)
-			ball.Shape,ball.CanCollide=Enum.PartType.Ball,false
-			for j=1,4 do
-				local a=j*1.8
-				local crater=block(ball,"Crater",Vector3.one*(0.36+j*0.06),CFrame.new(ball.Position+Vector3.new(math.cos(a),0.2*math.sin(a*2),math.sin(a))*1.15),moon.dark)
-				crater.Shape,crater.CanCollide=Enum.PartType.Ball,false
-			end
-			sign(ball,moon.name.."  ·  $"..moon.rent.."/5 с",moon.color,2.4).Parent.MaxDistance=18
+		local planet=Catalog.ById[id]
+		if planet then
+			local exhibit = PlanetModel.new(planet.appearance, 1.35)
+			exhibit.Name = "Exhibit"
+			exhibit:PivotTo(CFrame.new(pad.Position + Vector3.yAxis*2.8) * CFrame.Angles(0, math.pi, 0))
+			sign(exhibit.PrimaryPart, planet.name.."  ·  $"..planet.rent.."/5 с", planet.appearance.color, 2.4).Parent.MaxDistance=18
+			exhibit.Parent = pad
 		end
 	end
 end
